@@ -1,48 +1,45 @@
-const request = require("request");
 const cheerio = require("cheerio");
+const axios = require("axios");
 const fs = require("fs");
-const https = require("https");
 
-const express = require("express");
+const http = require("http");
 
-const app = express();
+const port = process.env.PORT || 3000;
 
-const port = process.env.PORT || 8000;
+const server = http.createServer((req, res) => {
+	res.statusCode = 200;
+	fs.readFile("data.json", (err, data) => {
+		if (err) throw err;
 
-app.listen(port, () => {
-	console.log(`Server started on port ${port}`);
+		res.end(data);
+	});
+});
+
+server.listen(port, () => {
+	console.log(`Server running at port ${port}`);
 });
 
 const gettimestorie = [];
 
-request("https://time.com/", (error, response, html) => {
-	if (!error && response.statusCode == 200) {
-		const $ = cheerio.load(html);
-		const title = $(".latest-stories__heading").text();
-		const letsee = $(".latest-stories__item a").each((i, el) => {
-			const title = $(el).text().replace(/\s\s+/g, " ");
-			const Url = $(el).attr("href").replace(/\s\s+/g, " ");
+axios("https://time.com/").then((response) => {
+	const htmldata = response.data;
+	const $ = cheerio.load(htmldata);
 
-			gettimestorie.push({
-				title: title,
-				Url: Url,
-			});
+	const title = $(".latest-stories__heading").text();
+	const letsee = $(".latest-stories__item a").each((i, el) => {
+		const title = $(el).text().replace(/\s\s+/g, " ");
+		const Url = $(el).attr("href").replace(/\s\s+/g, " ");
+
+		gettimestorie.push({
+			title: title,
+			Url: Url,
 		});
+	});
 
-		console.log(gettimestorie);
-	}
-
+	console.log(gettimestorie);
 	const jsondata = JSON.stringify(gettimestorie, null, 2);
 	fs.writeFile("data.json", jsondata, (err) => {
 		if (err) throw err;
 		console.log("Data written to file");
-	});
-
-	app.get("/getTimeStories", (req, res) => {
-		fs.readFile("data.json", (err, data) => {
-			if (err) throw err;
-
-			res.end(data);
-		});
 	});
 });
